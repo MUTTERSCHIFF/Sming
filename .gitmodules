@@ -57,10 +57,6 @@
 	path = Sming/Libraries/Adafruit_Sensor
 	url = https://github.com/adafruit/Adafruit_Sensor
 	ignore = dirty
-[submodule "Sming/Libraries/RingBufCPP"]
-	path = Sming/Libraries/RingBufCPP
-	url = https://github.com/wizard97/Embedded_RingBuf_CPP.git
-	ignore = dirty
 [submodule "Sming/third-party/lwip2"]
 	path = Sming/third-party/lwip2
 	url = https://github.com/d-a-v/esp82xx-nonos-linklayer.git
@@ -69,3 +65,6 @@
 	path = Sming/third-party/ESP8266_NONOS_SDK
 	url = https://github.com/espressif/ESP8266_NONOS_SDK.git
 	ignore = dirty
+[submodule "Sming/Libraries/RingBufCPP"]
+	path = Sming/Libraries/RingBufCPP
+	url = https://github.com/wizard97/Embedded_RingBuf_CPP.git
