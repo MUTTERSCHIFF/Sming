@@ -406,10 +406,17 @@ index 18bee3d..24236ca 100644
    static uint32_t ticksLow(uint32_t usecs, uint8_t tolerance = TOLERANCE,
                             uint16_t delta = 0);
 diff --git a/src/IRremoteESP8266.h b/src/IRremoteESP8266.h
-index 4449ca6..6f69275 100644
+index 190523e..6f69275 100644
 --- a/src/IRremoteESP8266.h
 +++ b/src/IRremoteESP8266.h
-@@ -54,7 +54,7 @@
+@@ -48,13 +48,13 @@
+ #endif
+ 
+ // Library Version
+-#define _IRREMOTEESP8266_VERSION_ "2.3.2"
++#define _IRREMOTEESP8266_VERSION_ "2.3.1"
+ // Supported IR protocols
+ // Each protocol you include costs memory and, during decode, costs time
  // Disable (set to false) all the protocols you do not need/want!
  // The Air Conditioner protocols are the most expensive memory-wise.
  //
@@ -418,6 +425,18 @@ index 4449ca6..6f69275 100644
  
  #define SEND_RAW             true
  
+diff --git a/src/IRsend.cpp b/src/IRsend.cpp
+index ba7f804..6411feb 100644
+--- a/src/IRsend.cpp
++++ b/src/IRsend.cpp
+@@ -47,7 +47,6 @@ void IRsend::begin() {
+ #ifndef UNIT_TEST
+   pinMode(IRpin, OUTPUT);
+ #endif
+-  ledOff();  // Ensure the LED is in a known safe state when we start.
+ }
+ 
+ // Turn off the IR LED.
 diff --git a/src/IRsend.h b/src/IRsend.h
 index ad53938..b8a9be8 100644
 --- a/src/IRsend.h
@@ -431,19 +450,6 @@ index ad53938..b8a9be8 100644
  #define VIRTUAL virtual
  #else
  #define VIRTUAL
-diff --git a/src/ir_JVC.cpp b/src/ir_JVC.cpp
-index 0efc51b..5eb2bbe 100644
---- a/src/ir_JVC.cpp
-+++ b/src/ir_JVC.cpp
-@@ -69,7 +69,7 @@ void IRsend::sendJVC(uint64_t data, uint16_t nbits, uint16_t repeat) {
-                 data, nbits, 38, true, 0,  // Repeats are handles elsewhere.
-                 33);
-     // Wait till the end of the repeat time window before we send another code.
--    space(std::max(JVC_RPT_LENGTH - JVC_MIN_GAP - usecs.elapsed(), 0U));
-+    space(max(JVC_RPT_LENGTH - JVC_MIN_GAP - usecs.elapsed(), 0U));
-     usecs.reset();
-   }
- }
 diff --git a/src/ir_Mitsubishi.cpp b/src/ir_Mitsubishi.cpp
 index 363eec6..f22a7d4 100644
 --- a/src/ir_Mitsubishi.cpp
@@ -503,16 +509,3 @@ index 3d8d244..6462c82 100644
                                  (uint16_t) sizeof(data) * 8);
    // Compliance
    if (strict) {
-diff --git a/src/ir_Whynter.cpp b/src/ir_Whynter.cpp
-index 17489f4..b92bdd2 100644
---- a/src/ir_Whynter.cpp
-+++ b/src/ir_Whynter.cpp
-@@ -67,7 +67,7 @@ void IRsend::sendWhynter(uint64_t data, uint16_t nbits, uint16_t repeat) {
-                 WHYNTER_BIT_MARK, WHYNTER_MIN_GAP,
-                 data, nbits, 38, true, 0,  // Repeats are already handled.
-                 50);
--    space(std::max(WHYNTER_MIN_COMMAND_LENGTH - WHYNTER_MIN_GAP -
-+    space(max(WHYNTER_MIN_COMMAND_LENGTH - WHYNTER_MIN_GAP -
-                    usecTimer.elapsed(), 0U));
-   }
- }
