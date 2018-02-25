@@ -64,8 +64,12 @@
 [submodule "Sming/Libraries/RingBufCPP"]
 	path = Sming/Libraries/RingBufCPP
 	url = https://github.com/wizard97/Embedded_RingBuf_CPP.git
-        ignore = dirty
+	ignore = dirty
 [submodule "Sming/Libraries/IR"]
 	path = Sming/Libraries/IR
 	url = https://github.com/markszabo/IRremoteESP8266.git
-        ignore = dirty
+	ignore = dirty
+[submodule "tools/esptool2"]
+	path = tools/esptool2
+	url = https://github.com/raburton/esptool2.git
+	ignore = dirty

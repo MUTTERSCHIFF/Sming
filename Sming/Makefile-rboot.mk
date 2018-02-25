@@ -13,6 +13,12 @@ RBOOT_BIG_FLASH  ?= 1
 RBOOT_TWO_ROMS   ?= 0
 RBOOT_RTC_ENABLED ?= 0
 RBOOT_GPIO_ENABLED ?= 0
+# RBOOT_GPIO_SKIP_ENABLED and RBOOT_GPIO_ENABLED cannot be used at the same time.
+RBOOT_GPIO_SKIP_ENABLED ?= 0
+
+ifeq ($(RBOOT_GPIO_ENABLED)$(RBOOT_GPIO_SKIP_ENABLED),11)
+	$(error "Cannot enable RBOOT_GPIO_ENABLED and RBOOT_GPIO_SKIP_ENABLED at the same time)
+endif
 
 ### ROM Addresses ###
 # The parameter below specifies the location of the second rom.
@@ -32,9 +38,9 @@ RBOOT_SPIFFS_1   ?= 0x300000
 RBOOT_LD_0 ?= rboot.rom0.ld
 RBOOT_LD_1 ?= rom1.ld
 # esptool2 path
-ESPTOOL2 ?= esptool2
+ESPTOOL2 ?= $(SMING_HOME)/../tools/esptool2/esptool2
 # path to spiffy
-SPIFFY ?= $(SMING_HOME)/spiffy/spiffy
+SPIFFY ?= $(SMING_HOME)/../tools/spiffy/spiffy
 INIT_BIN_ADDR  = 0x7c000
 BLANK_BIN_ADDR = 0x4b000
 # filenames and options for generating rBoot rom images with esptool2
@@ -228,7 +234,8 @@ EXTRA_INCDIR += $(SMING_HOME)/include $(SMING_HOME)/ $(LWIP_INCDIR) $(SMING_HOME
 USER_LIBDIR  = $(SMING_HOME)/compiler/lib/
 
 # compiler flags using during compilation of source files
-CFLAGS		= -Wpointer-arith -Wundef -Werror -Wl,-EL -nostdlib -mlongcalls -mtext-section-literals -finline-functions -fdata-sections -ffunction-sections -D__ets__ -DICACHE_FLASH -DARDUINO=106 -DCOM_SPEED_SERIAL=$(COM_SPEED_SERIAL) $(USER_CFLAGS) -DENABLE_CMD_EXECUTOR=$(ENABLE_CMD_EXECUTOR)
+CFLAGS   = -Wpointer-arith -Wundef -Werror -Wl,-EL -nostdlib -mlongcalls -mtext-section-literals -finline-functions -fdata-sections -ffunction-sections \
+           -D__ets__ -DICACHE_FLASH -DARDUINO=106 -DCOM_SPEED_SERIAL=$(COM_SPEED_SERIAL) $(USER_CFLAGS) -DENABLE_CMD_EXECUTOR=$(ENABLE_CMD_EXECUTOR) -DSMING_INCLUDED=1 
 # => SDK
 ifneq (,$(findstring third-party/ESP8266_NONOS_SDK, $(SDK_BASE)))
 	CFLAGS += -DSDK_INTERNAL
@@ -344,7 +351,7 @@ ifeq ($(DISABLE_SPIFFS), 1)
 endif
 
 # linker flags used to generate the main object file
-LDFLAGS		= -nostdlib -u call_user_start -u Cache_Read_Enable_New -u spiffs_get_storage_config -Wl,-static -Wl,--gc-sections -Wl,-Map=$(basename $@).map -Wl,-wrap,system_restart_local 
+LDFLAGS		= -nostdlib -u call_user_start -u Cache_Read_Enable_New -u spiffs_get_storage_config -u custom_crash_callback -Wl,-static -Wl,--gc-sections -Wl,-Map=$(basename $@).map -Wl,-wrap,system_restart_local 
 
 ifeq ($(SPI_SPEED), 26)
 	flashimageoptions = -ff 26m
@@ -438,6 +445,7 @@ export RBOOT_BUILD_BASE
 export RBOOT_FW_BASE
 export RBOOT_RTC_ENABLED
 export RBOOT_GPIO_ENABLED
+export RBOOT_GPIO_SKIP_ENABLED
 export RBOOT_ROM1_ADDR
 export RBOOT_ROM2_ADDR
 export SPI_SIZE
@@ -461,6 +469,10 @@ endif
 
 ifeq ($(RBOOT_GPIO_ENABLED),1)
 	CFLAGS += -DBOOT_GPIO_ENABLED
+endif
+
+ifeq ($(RBOOT_GPIO_SKIP_ENABLED),1)
+	CFLAGS += -DBOOT_GPIO_SKIP_ENABLED
 endif
 
 INCDIR	:= $(addprefix -I,$(SRC_DIR))
@@ -487,10 +499,8 @@ $1/%.o: %.cpp $1/%.cpp.d
 	$(vecho) "C+ $$<" 
 	$(Q) $(CXX) $(INCDIR) $(MODULE_INCDIR) $(EXTRA_INCDIR) $(SDK_INCDIR) $(CXXFLAGS) -c $$< -o $$@
 $1/%.c.d: %.c
-	$(vecho) "DEP $$<"
 	$(Q) $(CC) $(INCDIR) $(MODULE_INCDIR) $(EXTRA_INCDIR) $(SDK_INCDIR) $(CFLAGS) -MM -MT $1/$$*.o $$< -o $$@
 $1/%.cpp.d: %.cpp
-	$(vecho) "DEP $$<"
 	$(Q) $(CXX) $(INCDIR) $(MODULE_INCDIR) $(EXTRA_INCDIR) $(SDK_INCDIR) $(CXXFLAGS) -MM -MT $1/$$*.o $$< -o $$@
 
 .PRECIOUS: $1/%.c.d $1/%.cpp.d

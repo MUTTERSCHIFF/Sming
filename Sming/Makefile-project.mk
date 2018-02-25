@@ -37,7 +37,7 @@ DEBUG_PRINT_FILENAME_AND_LINE ?= 0
 DEBUG_VERBOSE_LEVEL ?= 2
 
 # Path to spiffy
-SPIFFY ?= $(SMING_HOME)/spiffy/spiffy
+SPIFFY ?= $(SMING_HOME)/../tools/spiffy/spiffy
 
 #ESPTOOL2 config to generate rBootLESS images
 IMAGE_MAIN	?= 0x00000.bin
@@ -49,7 +49,7 @@ INIT_BIN_ADDR =  0x7c000
 BLANK_BIN_ADDR =  0x4b000
 
 # esptool2 path
-ESPTOOL2 ?= esptool2
+ESPTOOL2 ?= $(SMING_HOME)/../tools/esptool2/esptool2
 # esptool2 parameters for rBootLESS images
 ESPTOOL2_SECTS		?= .text .data .rodata
 ESPTOOL2_MAIN_ARGS	?= -quiet -bin -boot0
@@ -256,7 +256,8 @@ ifeq ($(ENABLE_WPS),1)
 endif
 
 # compiler flags using during compilation of source files
-CFLAGS		= -Wpointer-arith -Wundef -Werror -Wl,-EL -nostdlib -mlongcalls -mtext-section-literals -finline-functions -fdata-sections -ffunction-sections -D__ets__ -DICACHE_FLASH -DARDUINO=106 -DCOM_SPEED_SERIAL=$(COM_SPEED_SERIAL) $(USER_CFLAGS) -DENABLE_CMD_EXECUTOR=$(ENABLE_CMD_EXECUTOR)
+CFLAGS  = -Wpointer-arith -Wundef -Werror -Wl,-EL -nostdlib -mlongcalls -mtext-section-literals -finline-functions -fdata-sections -ffunction-sections \
+          -D__ets__ -DICACHE_FLASH -DARDUINO=106 -DCOM_SPEED_SERIAL=$(COM_SPEED_SERIAL) $(USER_CFLAGS) -DENABLE_CMD_EXECUTOR=$(ENABLE_CMD_EXECUTOR) -DSMING_INCLUDED=1
 # => SDK
 ifneq (,$(findstring third-party/ESP8266_NONOS_SDK, $(SDK_BASE)))
 	CFLAGS += -DSDK_INTERNAL
@@ -311,7 +312,7 @@ ifeq ($(DISABLE_SPIFFS), 1)
 endif
 
 # linker flags used to generate the main object file
-LDFLAGS		= -nostdlib -u call_user_start -Wl,-static -Wl,--gc-sections -Wl,-Map=$(FW_BASE)/firmware.map -Wl,-wrap,system_restart_local 
+LDFLAGS		= -nostdlib -u call_user_start -u custom_crash_callback -Wl,-static -Wl,--gc-sections -Wl,-Map=$(FW_BASE)/firmware.map -Wl,-wrap,system_restart_local 
 
 # linker script used for the above linkier step
 LD_PATH     = $(SMING_HOME)/compiler/ld
@@ -418,10 +419,8 @@ $1/%.o: %.cpp $1/%.cpp.d
 	$(vecho) "C+ $$<" 
 	$(Q) $(CXX) $(INCDIR) $(MODULE_INCDIR) $(EXTRA_INCDIR) $(SDK_INCDIR) $(CXXFLAGS) -c $$< -o $$@
 $1/%.c.d: %.c
-	$(vecho) "DEP $$<"
 	$(Q) $(CC) $(INCDIR) $(MODULE_INCDIR) $(EXTRA_INCDIR) $(SDK_INCDIR) $(CFLAGS) -MM -MT $1/$$*.o $$< -o $$@
 $1/%.cpp.d: %.cpp
-	$(vecho) "DEP $$<"
 	$(Q) $(CXX) $(INCDIR) $(MODULE_INCDIR) $(EXTRA_INCDIR) $(SDK_INCDIR) $(CXXFLAGS) -MM -MT $1/$$*.o $$< -o $$@
 
 .PRECIOUS: $1/%.c.d $1/%.cpp.d

@@ -173,17 +173,14 @@ ARDUINO_LIBRARIES = $(shell git submodule status Libraries | cut -c2- | cut -f2 
 # which modules (subdirectories) of the project to include in compiling
 MODULES     = system system/helpers Wiring appinit \
               $(sort $(dir $(wildcard SmingCore/*/ SmingCore/*/*/ SmingCore/*/*/*/))) \
-              $(filter %/, $(wildcard Services/*/)) $(filter %/, $(wildcard Libraries/*/))
+              $(filter %/, $(wildcard Services/*/)) \
+              $(filter %/, $(wildcard Libraries/*/)) $(wildcard Libraries/*/src/)
 EXTRA_INCDIR    = include system/include Wiring Libraries SmingCore $(SDK_BASE)/../include
 
 # Place a file that should exist in a submodule that is fetched separately
 # => rboot 
 THIRD_PARTY_DATA = third-party/rboot/Makefile
 EXTRA_INCDIR += third-party/rboot third-party/rboot/appcode 
-
-# => IRremote8266
-MODULES += Libraries/IR/src
-EXTRA_INCDIR += Libraries/IR/src
 
 # => spiffs
 THIRD_PARTY_DATA += third-party/spiffs/makefile
@@ -269,7 +266,7 @@ MFORCE32 := $(shell $(CC) --help=target | grep mforce-l32)
 
 # compiler flags using during compilation of source files. Add '-pg' for debugging
 CFLAGS += -Wpointer-arith -Wundef -Werror -Wl,-EL -nostdlib -mlongcalls -mtext-section-literals -finline-functions -fdata-sections -ffunction-sections \
-         -D__ets__ -DICACHE_FLASH -DARDUINO=106 -DCOM_SPEED_SERIAL=$(COM_SPEED_SERIAL) -DENABLE_CMD_EXECUTOR=$(ENABLE_CMD_EXECUTOR) -DESP8266=1
+         -D__ets__ -DICACHE_FLASH -DARDUINO=106 -DCOM_SPEED_SERIAL=$(COM_SPEED_SERIAL) -DENABLE_CMD_EXECUTOR=$(ENABLE_CMD_EXECUTOR) -DESP8266=1 -DSMING_INCLUDED=1 
 ifeq ($(SMING_RELEASE),1)
 	# See: https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html
 	#      for full list of optimization options
@@ -315,7 +312,7 @@ ifeq ($(ENABLE_SSL),1)
 		AXTLS_FLAGS += -DSSL_DEBUG=1 -DDEBUG_TLS_MEM=1 -DAXL_DEBUG=1
 	endif
 	CUSTOM_TARGETS += $(USER_LIBDIR)/libaxtls.a
-	EXTRA_CFLAGS_AXTLS = -I../../system/include -I../../Wiring
+#	EXTRA_CFLAGS_AXTLS = -I../../system/include -I../../Wiring
 	CFLAGS += $(AXTLS_FLAGS)  
 	CXXFLAGS += $(AXTLS_FLAGS)
 endif
@@ -356,6 +353,7 @@ EXTRA_INCDIR	:= $(addprefix -I,$(EXTRA_INCDIR))
 MODULE_INCDIR	:= $(addsuffix /include,$(INCDIR))
 
 SAMPLES_DIRS := $(shell ls -1 ../samples)
+TOOLS_DIRS   := $(shell ls -1 ../tools)
 THIRD_PARTY_DIRS := $(shell ls -1 third-party )
 DOXYGEN := $(shell command -v doxygen 2> /dev/null)
 
@@ -398,9 +396,9 @@ $1/%.cpp.d: %.cpp
 .PRECIOUS: $1/%.c.d $1/%.cpp.d
 endef
 
-.PHONY: all checkdirs clean spiffy test samples-clean samples $(SAMPLES_DIRS) docs api wiki
+.PHONY: all checkdirs clean tools $(TOOLS_DIRS) test samples-clean samples $(SAMPLES_DIRS) docs api wiki
 
-all: checkdirs $(APP_AR) spiffy
+all: checkdirs $(APP_AR) tools
 
 ifeq ($(ENABLE_CUSTOM_PWM), 1)	
 $(USER_LIBDIR)/libpwm_open.a: third-party/pwm/pwm.c
@@ -429,13 +427,6 @@ $(USER_LIBDIR)/liblwip%.a: third-party/lwip2/Makefile.sming
 	$(Q) $(MAKE) -C third-party/lwip2/ -f Makefile.sming ENABLE_ESPCONN=$(ENABLE_ESPCONN) SDK_BASE="$(SDK_BASE)" USER_LIBDIR="$(SMING_HOME)/$(USER_LIBDIR)/" CFLAGS_EXTRA="$(EXTRA_CFLAGS_LWIP)" all
 endif
 
-spiffy: spiffy/spiffy
-
-spiffy/spiffy: third-party/spiffs/makefile
-	$(vecho) "Making spiffy utility"
-	$(Q) $(MAKE) --no-print-directory -C spiffy V=$(V)
-	$(vecho) "Done"
-
 $(APP_AR): $(OBJ)
 	$(vecho) "AR $@"
 	$(Q) $(AR) cru $@ $^
@@ -457,8 +448,6 @@ $(FW_BASE):
 	$(Q) mkdir -p $@
 	$(Q) mkdir -p $@/upgrade
 
-rebuild: clean all
-
 clean:
 	$(Q) rm -f $(APP_AR)
 	$(Q) rm -f $(TARGET_OUT)
@@ -467,8 +456,6 @@ clean:
 	$(Q) rm -rf $(FW_BASE)
 ifeq ($(ENABLE_SSL), 1)
 	$(Q) -$(MAKE) --no-print-directory -C third-party/axtls-8266 clean -e V=$(V) BIN_DIR="$(SMING_HOME)/$(USER_LIBDIR)" CFLAGS_EXTRA="$(EXTRA_CFLAGS_AXTLS)"
-else
-	$(Q) $(MAKE) --no-print-directory -C spiffy clean V=$(V)
 endif	
 ifeq ($(ENABLE_CUSTOM_LWIP), 1)
 	$(Q) -$(MAKE) -C third-party/esp-open-lwip/ -f Makefile.open ENABLE_ESPCONN=$(ENABLE_ESPCONN) SDK_BASE="$(SDK_BASE)" USER_LIBDIR="$(SMING_HOME)/$(USER_LIBDIR)/" CFLAGS_EXTRA="$(EXTRA_CFLAGS_LWIP)" clean
@@ -545,8 +532,23 @@ third-party-clean:
 libraries-clean:
 	$(Q) rm -rf Libraries
 	$(Q) $(GIT) checkout Libraries 
+
+tools: third-party/spiffs/makefile $(TOOLS_DIRS)
+
+$(TOOLS_DIRS):
+	$(Q) if [ -d $(SMING_HOME)/../tools/$@ ]; then \
+			echo "Making $@"; \
+			if [ ! -e $(SMING_HOME)/../tools/$@/Makefile ]; then (cd $(SMING_HOME)/../; $(GIT) submodule update --init --recursive tools/$@/;); fi; \
+			$(MAKE) --no-print-directory -C $(SMING_HOME)/../tools/$@ V=$(V); \
+		 fi
+
+tools-clean:
+	$(Q) for dir in $(TOOLS_DIRS); do \
+		  if [ ! -d $(SMING_HOME)/../tools/$$dir ]; then continue; fi; \
+          $(MAKE) --no-print-directory -C $(SMING_HOME)/../tools/$$dir clean V=$(V); \
+        done
        
-dist-clean: clean samples-clean third-party-clean libraries-clean
+dist-clean: clean samples-clean third-party-clean libraries-clean tools-clean
 	$(Q) for file in $(shell ls $(USER_LIBDIR)/lib*.a ); do \
  	   rm $$file; \
  	done
